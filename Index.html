@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>RPG Battle</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      font-family: 'Courier New', monospace; 
+      padding: 20px; 
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); 
+      color: #e0e0e0;
+      margin: 0;
+      min-height: 100vh;
+    }
+    h2 { 
+      color: #61dafb; 
+      text-align: center;
+      text-shadow: 0 0 10px rgba(97, 218, 251, 0.5);
+      margin-bottom: 20px;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+    button { 
+      padding: 12px 24px; 
+      cursor: pointer; 
+      font-family: inherit; 
+      background: linear-gradient(145deg, #2d2d44, #1a1a2e); 
+      color: #fff; 
+      border: 2px solid #555; 
+      border-radius: 8px;
+      font-weight: bold;
+      transition: all 0.2s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    button:hover { 
+      background: linear-gradient(145deg, #3a3a55, #252540);
+      border-color: #61dafb;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(97, 218, 251, 0.3);
+    }
+    button:active { transform: translateY(0); }
+    
+    #log { 
+      background: #0a0a14; 
+      padding: 20px; 
+      border-radius: 10px; 
+      max-height: 70vh; 
+      overflow-y: auto; 
+      white-space: pre-wrap; 
+      border: 2px solid #333;
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+      line-height: 1.4;
+      font-size: 14px;
+    }
+    #log::-webkit-scrollbar { width: 10px; }
+    #log::-webkit-scrollbar-track { background: #1a1a2e; border-radius: 5px; }
+    #log::-webkit-scrollbar-thumb { background: #61dafb; border-radius: 5px; }
+    
+    .success { color: #4caf50; }
+    .error { color: #f44336; }
+    .info { color: #2196f3; }
+    .warning { color: #ff9800; }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    #log { animation: fadeIn 0.3s ease-out; }
+  </style>
+</head>
+<body>
+  <h2>🎮 RPG Battle Arena 🎮</h2>
+  
+  <div class="controls">
+    <button id="btn-battle">▶ Запустить битву</button>
+    <button id="btn-clear">🗑️ Очистить лог</button>
+    <button id="btn-scroll">📜 Вниз</button>
+  </div>
+  
+  <pre id="log">⏳ Загрузка модулей...</pre>
+
+  <script type="module">
+    const logEl = document.getElementById('log');
+    const [origLog, origErr, origWarn] = [console.log, console.error, console.warn];
+
+    const logToScreen = (type, ...args) => {
+      const line = args.map(a => {
+        if (typeof a === 'object' && a !== null) {
+          try { return JSON.stringify(a, null, 2); }
+          catch { return String(a); }
+        }
+        return String(a);
+      }).join(' ');
+      
+      const prefix = type === 'error' ? '❌ ' : type === 'warn' ? '⚠️ ' : '';
+      logEl.textContent += prefix + line + '\n';
+      logEl.scrollTop = logEl.scrollHeight;
+      
+      (type === 'error' ? origErr : type === 'warn' ? origWarn : origLog)
+        .apply(console, args);
+    };
+    
+    console.log = (...args) => logToScreen('log', ...args);
+    console.error = (...args) => logToScreen('error', ...args);
+    console.warn = (...args) => logToScreen('warn', ...args);
+
+    document.getElementById('btn-scroll').onclick = () => 
+      logEl.scrollTop = logEl.scrollHeight;
+
+    document.getElementById('btn-clear').onclick = () => {
+      logEl.textContent = '';
+      console.log('🧹 Лог очищен');
+    };
+
+    (async () => {
+      try {
+        const rpg = await import('./src/index.js');
+        const { Warrior, Archer, Mage, Dwarf, Crossbowman, Demiurge, play } = rpg;
+        
+        try { await import('./tests/manual-tests.js'); } catch(e) {}
+
+        logEl.textContent = '✅ Модули загружены успешно!\n🎮 Выберите действие:\n';
+        console.log('💡 Подсказка: используйте кнопки управления выше');
+
+        document.getElementById('btn-battle').onclick = () => {
+          logEl.textContent = '';
+          console.log('🎮 === НАЧАЛО БИТВЫ ===\n');
+          
+          const players = [
+            new Warrior(0, "Алёша"),
+            new Archer(15, "Леголас"),
+            new Mage(25, "Гендальф"),
+            new Dwarf(1, "Гимли")
+          ];
+          
+          setTimeout(() => play(players), 100);
+        };
+
+      } catch (err) {
+        logEl.textContent = `❌ Ошибка загрузки модулей:\n📛 ${err.message}\n\n`;
+        logEl.textContent += '💡 Возможные причины:\n';
+        logEl.textContent += '  1. Неверные пути к файлам (проверьте src/, tests/)\n';
+        logEl.textContent += '  2. Ошибка синтаксиса в импортах (.js в конце!)\n';
+        logEl.textContent += '  3. Проблема в коде (см. консоль браузера: F12)\n';
+        console.error('🔍 Детали ошибки:', err);
+      }
+    })();
+  </script>
+</body>
+</html>
